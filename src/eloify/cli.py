@@ -164,7 +164,7 @@ def board(which: str | None, top: int | None) -> None:
 
     # Overall board: headline ELO plus singles/doubles columns.
     overall, singles, doubles = modes["overall"], modes["singles"], modes["doubles"]
-    ranked = engine.leaderboard(overall)
+    ranked = [s for s in engine.leaderboard(overall) if s.games > 0]
     if top:
         ranked = ranked[:top]
 
