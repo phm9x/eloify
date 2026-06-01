@@ -1,58 +1,38 @@
-# Eloify setup
+# Eloify setup (~2 min)
 
-One-time setup, ~5 minutes.
-
-## 1. Install
+## 1. Install the `elo` command
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .
+brew install pipx && pipx ensurepath   # then open a NEW terminal
+pipx install -e .                       # from inside the cloned repo
 ```
 
-This installs two equivalent commands: **`elo`** and **`eloify`**.
+This puts `elo` (and `eloify`) on your PATH — runnable from any directory.
 
-## 2. Credentials
+## 2. Add your credentials
 
-You need a Google **service-account key** (a JSON file with
-`"type": "service_account"`). You already have one from a previous project.
-
-1. Save the JSON somewhere private (it stays out of git — `.gitignore`
-   excludes `*.json` and `.env`).
-2. In `.env`, point to it:
-   ```
-   GOOGLE_SERVICE_ACCOUNT_FILE=/absolute/path/to/service-account.json
-   ```
-   (Or paste the JSON inline as `GOOGLE_SERVICE_ACCOUNT_JSON=...` — see `.env`.)
-
-## 3. Share the spreadsheet ← the step everyone forgets
-
-Open the JSON and copy the **`client_email`** (looks like
-`something@your-project.iam.gserviceaccount.com`). In the Google Sheet, click
-**Share** and add that address as an **Editor**. Without this, every call
-returns a 403.
-
-## 4. Initialise the tabs
+Eloify reads a Google service-account key. **Message Peter for the JSON file.**
+Save it and a one-line `.env` under `~/.config/eloify/`:
 
 ```bash
-elo init
+mkdir -p ~/.config/eloify
+mv ~/Downloads/eloify-secret.json ~/.config/eloify/        # the file from Peter
+chmod 600 ~/.config/eloify/eloify-secret.json
 ```
 
-This writes header rows to the Games and Players tabs **only if they're empty**,
-so it won't clobber existing data.
+Create `~/.config/eloify/.env`:
 
-## 5. Go
+```
+GOOGLE_SERVICE_ACCOUNT_FILE=/Users/<you>/.config/eloify/eloify-secret.json
+```
+
+(Use your absolute home path — `/Users/<you>/...`.)
+
+## 3. Go
 
 ```bash
-elo add duncan peter 21 18
 elo board
+elo add duncan peter 21 18
 ```
 
-## Sheet layout
-
-- **Games** (gid 0): `id · played_at · mode · team_a · team_b · score_a · score_b`
-- **Players** (gid 604449976): `name · created_at`
-
-Ratings are **not** stored — they're recomputed from the full game log every
-time, so you can tweak the formula or delete a bad game and everything stays
-consistent.
+That's it — the sheet is already set up and shared.
