@@ -1,6 +1,6 @@
 # 🏓 Eloify
 
-Office ping pong ELO tracker — a CLI (`elo` / `eloify`) backed by a Google Sheet.
+Insurify ping pong ELO tracker.
 
 ```bash
 elo add duncan peter 21 18          # 1v1 — higher score wins, order-independent
@@ -8,7 +8,7 @@ elo add duncan peter sam alex 21 15 # 2v2 — your side, their side, the scores
 elo board                           # leaderboard (overall + singles/doubles)
 ```
 
-**New here?** See **[SETUP.md](SETUP.md)** (~2 min).
+See **[SETUP.md](SETUP.md)** for install (~3 min).
 
 ## Entry grammar
 
@@ -31,7 +31,8 @@ game (flagging unknown names as new players) and confirms before writing.
 
 ## Scoring & rating
 
-- Games go to **5, 11, or 21**, win by **2**; illegal scores are rejected.
+- Games go to **11 or 21**, win by **2** (deuce caps at 17-15 / 27-25); other
+  scores are rejected as typos.
 - Logistic ELO with **margin-of-victory** weighting (blowouts move more, upsets
   amplified). Everyone starts at 1000; 2v2 uses team-average ratings.
 - Ratings are recomputed from the full game log, so the formula can change and
@@ -42,6 +43,3 @@ game (flagging unknown names as new players) and confirms before writing.
 ```bash
 pip install -e ".[dev]" && pytest
 ```
-
-Parser, validation, and ELO are pure and unit-tested; `sheets.py` is the only
-part that touches the network.
