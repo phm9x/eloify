@@ -324,18 +324,31 @@ def add_player(name: str) -> None:
     console.print(f"[green]✓[/] Added {name}.")
 
 
-@main.command()
-@click.argument("name")
-def history(name: str) -> None:
-    """Show a player's recent games and rating trend."""
-    store = _store()
-    games = [engine.record_to_game(g) for g in store.read_games()]
-    known = store.player_names()
+def _resolve_player(name: str, known: list[str]) -> str:
+    """Resolve a name to a known player, or exit with an error."""
     resolved = engine.match_candidates(name, known)
     if not resolved:
         err.print(f"[bold red]✗[/] No player matches '{name}'.")
         sys.exit(1)
-    player = resolved[0]
+    return resolved[0]
+
+
+@main.command()
+@click.argument("name")
+@click.argument("opponent", required=False)
+def history(name: str, opponent: str | None) -> None:
+    """Show a player's recent games and rating trend.
+
+    Pass a second name for head-to-head:  elo history peter duncan
+    """
+    store = _store()
+    games = [engine.record_to_game(g) for g in store.read_games()]
+    known = store.player_names()
+    player = _resolve_player(name, known)
+    rival = _resolve_player(opponent, known) if opponent else None
+    if rival and rival == player:
+        err.print("[bold red]✗[/] Pick two different players for head-to-head.")
+        sys.exit(1)
 
     # Replay incrementally to capture this player's rating after each game.
     stats = {n: engine.PlayerStats(name=n) for n in known}
@@ -344,18 +357,30 @@ def history(name: str) -> None:
         before = stats.get(player, engine.PlayerStats(player)).rating
         _apply_single(stats, g)
         after = stats[player].rating if player in stats else before
-        if player in (g.team_a + g.team_b):
-            on_a = player in g.team_a
-            opp = " & ".join(g.team_b if on_a else g.team_a)
-            mine = g.score_a if on_a else g.score_b
-            theirs = g.score_b if on_a else g.score_a
-            res = "W" if mine > theirs else "L"
-            rows.append((g.id, res, mine, theirs, opp, before, after))
+        if player not in (g.team_a + g.team_b):
+            continue
+        on_a = player in g.team_a
+        their_team = g.team_b if on_a else g.team_a
+        # Head-to-head: only games where the rival was on the opposing side.
+        if rival and rival not in their_team:
+            continue
+        opp = " & ".join(their_team)
+        mine = g.score_a if on_a else g.score_b
+        theirs = g.score_b if on_a else g.score_a
+        res = "W" if mine > theirs else "L"
+        rows.append((g.id, res, mine, theirs, opp, before, after))
 
     if not rows:
-        console.print(f"[dim]{player} hasn't played any games yet.[/]")
+        if rival:
+            console.print(f"[dim]{player} hasn't faced {rival} yet.[/]")
+        else:
+            console.print(f"[dim]{player} hasn't played any games yet.[/]")
         return
-    table = Table(title=f"📜 {player}")
+
+    title = f"📜 {player} vs {rival}" if rival else f"📜 {player}"
+    wins = sum(1 for r in rows if r[1] == "W")
+    losses = len(rows) - wins
+    table = Table(title=title, caption=f"{player} {wins}-{losses} {rival}" if rival else None)
     table.add_column("#", style="dim", justify="right")
     table.add_column("Result")
     table.add_column("Score", justify="right")

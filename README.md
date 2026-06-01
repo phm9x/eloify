@@ -30,7 +30,7 @@ flow (à la `gh pr create`): pick the game type, select players from the roster
 | `elo board [singles\|doubles] [--top N]` | Leaderboard |
 | `elo players` | Roster with current ELO |
 | `elo add-player "Name"` | Register a player (optional) |
-| `elo history <name>` | A player's recent games + trend |
+| `elo history <name> [opponent]` | A player's recent games + trend; add a 2nd name for head-to-head |
 | `elo last [N]` | The last N games |
 | `elo undo [-y]` | Remove the most recent game |
 | `elo init` | One-time: write header rows to empty tabs |
