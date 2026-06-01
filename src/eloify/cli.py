@@ -123,28 +123,68 @@ def add(tokens: tuple[str, ...], yes: bool) -> None:
 
 
 @main.command()
+@click.argument(
+    "which",
+    required=False,
+    type=click.Choice(["overall", "singles", "doubles"], case_sensitive=False),
+)
 @click.option("--top", type=int, default=None, help="Show only the top N players.")
-def board(top: int | None) -> None:
-    """Show the leaderboard."""
+def board(which: str | None, top: int | None) -> None:
+    """Show the leaderboard.
+
+    `elo board` shows overall ELO with singles & doubles columns.
+    `elo board singles` / `elo board doubles` rank by that game type only.
+    """
     store = _store()
-    stats = engine.replay(
-        store.player_names(),
-        [engine.record_to_game(g) for g in store.read_games()],
-    )
-    ranked = engine.leaderboard(stats)
+    games = [engine.record_to_game(g) for g in store.read_games()]
+    modes = engine.replay_modes(store.player_names(), games)
+    which = (which or "overall").lower()
+
+    # Filtered board: rank by one game type, only its W/L and ELO.
+    if which in ("singles", "doubles"):
+        stats = modes[which]
+        ranked = [s for s in engine.leaderboard(stats) if s.games > 0]
+        if top:
+            ranked = ranked[:top]
+        label = "Singles (1v1)" if which == "singles" else "Doubles (2v2)"
+        table = Table(title=f"🏓 {label} Leaderboard")
+        table.add_column("#", justify="right", style="dim")
+        table.add_column("Player")
+        table.add_column("ELO", justify="right", style="bold")
+        table.add_column("W-L", justify="right")
+        table.add_column("Win%", justify="right")
+        table.add_column("Games", justify="right", style="dim")
+        for i, s in enumerate(ranked, 1):
+            table.add_row(
+                str(i), s.name, _fmt(s.rating),
+                f"{s.wins}-{s.losses}", f"{s.win_pct:.0f}%", str(s.games),
+            )
+        console.print(table if ranked else f"[dim]No {which} games logged yet.[/]")
+        return
+
+    # Overall board: headline ELO plus singles/doubles columns.
+    overall, singles, doubles = modes["overall"], modes["singles"], modes["doubles"]
+    ranked = engine.leaderboard(overall)
     if top:
         ranked = ranked[:top]
+
+    def cell(stats: dict, name: str) -> str:
+        s = stats.get(name)
+        return _fmt(s.rating) if s and s.games > 0 else "[dim]–[/]"
 
     table = Table(title="🏓 Eloify Leaderboard")
     table.add_column("#", justify="right", style="dim")
     table.add_column("Player")
-    table.add_column("ELO", justify="right", style="bold")
+    table.add_column("Overall", justify="right", style="bold")
+    table.add_column("Singles", justify="right")
+    table.add_column("Doubles", justify="right")
     table.add_column("W-L", justify="right")
     table.add_column("Win%", justify="right")
     table.add_column("Games", justify="right", style="dim")
     for i, s in enumerate(ranked, 1):
         table.add_row(
             str(i), s.name, _fmt(s.rating),
+            cell(singles, s.name), cell(doubles, s.name),
             f"{s.wins}-{s.losses}", f"{s.win_pct:.0f}%", str(s.games),
         )
     console.print(table if ranked else "[dim]No players yet. Log a game with `elo add`.[/]")

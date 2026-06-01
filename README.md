@@ -37,7 +37,8 @@ new players**, and previews the rating changes before writing:
 | Command | What it does |
 |---|---|
 | `elo add <players...> <scoreA> <scoreB>` | Log a game (`-y` to skip confirm) |
-| `elo board [--top N]` | Leaderboard |
+| `elo board [--top N]` | Leaderboard — overall ELO with singles & doubles columns |
+| `elo board singles` / `elo board doubles` | Leaderboard ranked by that game type only |
 | `elo players` | Roster with current ELO |
 | `elo add-player "Name"` | Register a player (optional) |
 | `elo history <name>` | A player's recent games + rating trend |

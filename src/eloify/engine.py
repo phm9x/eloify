@@ -67,6 +67,21 @@ def replay(player_names: list[str], games: list[Game]) -> dict[str, PlayerStats]
     return stats
 
 
+def replay_modes(
+    player_names: list[str], games: list[Game]
+) -> dict[str, dict[str, PlayerStats]]:
+    """Derive overall / singles / doubles ratings from one game log.
+
+    Same rows, three filters — each is an independent replay, so a player's
+    singles rating is unaffected by their doubles games and vice versa.
+    """
+    return {
+        "overall": replay(player_names, games),
+        "singles": replay(player_names, [g for g in games if g.mode == "1v1"]),
+        "doubles": replay(player_names, [g for g in games if g.mode == "2v2"]),
+    }
+
+
 def leaderboard(stats: dict[str, PlayerStats]) -> list[PlayerStats]:
     return sorted(
         stats.values(),
