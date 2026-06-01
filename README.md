@@ -3,6 +3,7 @@
 Insurify ping pong ELO tracker.
 
 ```bash
+elo add                             # guided flow — pick mode, players, scores
 elo add duncan peter 21 18          # 1v1 — higher score wins, order-independent
 elo add duncan peter sam alex 21 15 # 2v2 — your side, their side, the scores
 elo board                           # leaderboard (overall + singles/doubles)
@@ -16,11 +17,16 @@ Positional, nothing to memorize: **2 names → 1v1, 4 names → 2v2**, trailing
 integers are the scores, **higher score wins**. Every `add` previews the parsed
 game (flagging unknown names as new players) and confirms before writing.
 
+Prefer not to type it all out? Run **`elo add`** with no arguments for a guided
+flow (à la `gh pr create`): pick the game type, select players from the roster
+(or add new ones), and enter the score — with the same preview and confirmation.
+
 ## Commands
 
 | Command | What it does |
 |---|---|
 | `elo add <players...> <a> <b>` | Log a game (`-y` skips confirm) |
+| `elo add` | Log a game via the guided interactive flow |
 | `elo board [singles\|doubles] [--top N]` | Leaderboard |
 | `elo players` | Roster with current ELO |
 | `elo add-player "Name"` | Register a player (optional) |

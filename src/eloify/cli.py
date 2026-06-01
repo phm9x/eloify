@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 
 import click
+import questionary
 from rich.console import Console
 from rich.table import Table
 
@@ -54,37 +55,145 @@ def main() -> None:
     """Eloify — office ping pong ELO tracker."""
 
 
+ADD_NEW = "\x00add-new"  # sentinel value for the "add a new player" choice
+
+
+def _prompt_new_player(taken: list[str]) -> str | None:
+    """Ask for a brand-new player name. Returns None if cancelled/invalid."""
+    name = questionary.text("New player name:").ask()
+    if name is None:
+        return None
+    name = name.strip()
+    if not name:
+        err.print("[yellow]Name can't be empty.[/]")
+        return None
+    if name in taken:
+        err.print(f"[yellow]{name} is already in this game.[/]")
+        return None
+    return name
+
+
+def _pick_team(label: str, pool: list[str], size: int) -> list[str] | None:
+    """Pick `size` players for a team, allowing new names. None if cancelled."""
+    team: list[str] = []
+    while len(team) < size:
+        slot = f"{label} (player {len(team) + 1} of {size})" if size > 1 else label
+        choices = [questionary.Choice(n, value=n) for n in pool if n not in team]
+        choices.append(questionary.Choice("➕ Add a new player…", value=ADD_NEW))
+        pick = questionary.select(slot, choices=choices).ask()
+        if pick is None:
+            return None
+        if pick == ADD_NEW:
+            name = _prompt_new_player(pool + team)
+            if name is None:
+                continue
+            team.append(name)
+        else:
+            team.append(pick)
+    return team
+
+
+def _prompt_scores(a_label: str, b_label: str) -> tuple[int, int] | None:
+    """Prompt for both scores, re-asking until they form a legal result."""
+    while True:
+        raw_a = questionary.text(f"{a_label} score:").ask()
+        if raw_a is None:
+            return None
+        raw_b = questionary.text(f"{b_label} score:").ask()
+        if raw_b is None:
+            return None
+        try:
+            score_a, score_b = int(raw_a), int(raw_b)
+        except ValueError:
+            err.print("[yellow]Scores must be whole numbers.[/]")
+            continue
+        try:
+            validate_score(score_a, score_b)
+        except ScoreError as e:
+            err.print(f"[yellow]{e}[/]")
+            continue
+        return score_a, score_b
+
+
+def _interactive_add(known: list[str]):
+    """Walk the user through logging a game. Returns the game tuple or None."""
+    mode = questionary.select(
+        "Game type:",
+        choices=[
+            questionary.Choice("1v1 (singles)", value="1v1"),
+            questionary.Choice("2v2 (doubles)", value="2v2"),
+        ],
+    ).ask()
+    if mode is None:
+        return None
+    size = 1 if mode == "1v1" else 2
+
+    team_a = _pick_team("Team A", known, size)
+    if team_a is None:
+        return None
+    team_b = _pick_team("Team B", [n for n in known if n not in team_a], size)
+    if team_b is None:
+        return None
+
+    a_label = " & ".join(team_a)
+    b_label = " & ".join(team_b)
+    scores = _prompt_scores(a_label, b_label)
+    if scores is None:
+        return None
+    score_a, score_b = scores
+
+    new_players = [n for n in team_a + team_b if n not in known]
+    return mode, team_a, team_b, new_players, score_a, score_b
+
+
 @main.command()
 @click.argument("tokens", nargs=-1)
 @click.option("-y", "--yes", is_flag=True, help="Skip the confirmation prompt.")
 def add(tokens: tuple[str, ...], yes: bool) -> None:
-    """Log a game:  elo add duncan peter 21 18  (1v1)  ·  ...sam alex 21 15 (2v2)."""
-    try:
-        pg = parse_add(list(tokens))
-        validate_score(pg.score_a, pg.score_b)
-    except (ParseError, ScoreError) as e:
-        err.print(f"[bold red]✗[/] {e}")
-        sys.exit(1)
+    """Log a game:  elo add duncan peter 21 18  (1v1)  ·  ...sam alex 21 15 (2v2).
 
+    Run `elo add` with no arguments for a guided, interactive flow.
+    """
     store = _store()
     games = store.read_games()
     known = store.player_names()
 
-    # Resolve typed names to canonical players (or flag as new).
-    team_a, team_b, new_players = [], [], []
-    for token in pg.team_a:
-        name, is_new = _resolve_name(token, known)
-        team_a.append(name)
-        if is_new:
-            new_players.append(name)
-    for token in pg.team_b:
-        name, is_new = _resolve_name(token, known)
-        team_b.append(name)
-        if is_new:
-            new_players.append(name)
+    if tokens:
+        try:
+            pg = parse_add(list(tokens))
+            validate_score(pg.score_a, pg.score_b)
+        except (ParseError, ScoreError) as e:
+            err.print(f"[bold red]✗[/] {e}")
+            sys.exit(1)
+
+        # Resolve typed names to canonical players (or flag as new).
+        team_a, team_b, new_players = [], [], []
+        for token in pg.team_a:
+            name, is_new = _resolve_name(token, known)
+            team_a.append(name)
+            if is_new:
+                new_players.append(name)
+        for token in pg.team_b:
+            name, is_new = _resolve_name(token, known)
+            team_b.append(name)
+            if is_new:
+                new_players.append(name)
+        mode, score_a, score_b = pg.mode, pg.score_a, pg.score_b
+    else:
+        if not sys.stdin.isatty():
+            err.print(
+                "[bold red]✗[/] No game given. e.g. elo add duncan peter 21 18 "
+                "(or run `elo add` in a terminal for the guided flow)."
+            )
+            sys.exit(1)
+        result = _interactive_add(known)
+        if result is None:
+            console.print("[dim]Cancelled.[/]")
+            return
+        mode, team_a, team_b, new_players, score_a, score_b = result
 
     stats = engine.replay(known, [engine.record_to_game(g) for g in games])
-    preview = engine.preview_game(stats, team_a, team_b, pg.score_a, pg.score_b)
+    preview = engine.preview_game(stats, team_a, team_b, score_a, score_b)
 
     # Confirmation view.
     def side(names: list[str], score: int, winner: bool) -> str:
@@ -94,11 +203,11 @@ def add(tokens: tuple[str, ...], yes: bool) -> None:
         ]
         return f"{' & '.join(labelled)}  [bold]{score}[/]{tag}"
 
-    a_won = pg.score_a > pg.score_b
+    a_won = score_a > score_b
     console.print()
-    console.print(f"  [dim]{pg.mode}[/]")
-    console.print("  Team A:  " + side(team_a, pg.score_a, a_won))
-    console.print("  Team B:  " + side(team_b, pg.score_b, not a_won))
+    console.print(f"  [dim]{mode}[/]")
+    console.print("  Team A:  " + side(team_a, score_a, a_won))
+    console.print("  Team B:  " + side(team_b, score_b, not a_won))
     console.print("  [dim]projected:[/] " + "   ".join(
         f"{n} {d:+.0f}" for n, (_, _, d) in preview.items()
     ))
@@ -111,7 +220,7 @@ def add(tokens: tuple[str, ...], yes: bool) -> None:
     for name in new_players:
         store.add_player(name)
     game_id = store.next_game_id(games)
-    store.append_game(game_id, pg.mode, team_a, team_b, pg.score_a, pg.score_b)
+    store.append_game(game_id, mode, team_a, team_b, score_a, score_b)
 
     console.print(f"[green]✓[/] Logged game #{game_id}.")
     for name, (before, after, delta) in preview.items():
