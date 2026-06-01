@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "eloify"
+version = "0.1.0"
+description = "Office ping pong ELO tracker with a Google Sheets backend"
+requires-python = ">=3.10"
+dependencies = [
+    "gspread>=6.0",
+    "google-auth>=2.0",
+    "python-dotenv>=1.0",
+    "click>=8.1",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+# Both `elo` and `eloify` launch the same CLI.
+[project.scripts]
+elo = "eloify.cli:main"
+eloify = "eloify.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/eloify"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

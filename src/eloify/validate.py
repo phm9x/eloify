@@ -1,0 +1,48 @@
+"""Hard validation of ping pong scores.
+
+A game is played to a target of 5, 11, or 21, and must be won by 2 (deuce
+extends play past the target). A result (w, l) with w > l is legal if SOME
+target T in {5, 11, 21} satisfies either:
+
+    clean win:  w == T  and  l <= T - 2
+    deuce:      l >= T - 1  and  w == l + 2
+
+We only need to know a legal target exists; we don't store which one.
+"""
+
+from __future__ import annotations
+
+TARGETS = (5, 11, 21)
+
+
+class ScoreError(ValueError):
+    """Raised when a score pair isn't a legal ping pong result."""
+
+
+def _valid_for_target(winner: int, loser: int, target: int) -> bool:
+    if winner == target and loser <= target - 2:
+        return True
+    if loser >= target - 1 and winner == loser + 2:
+        return True
+    return False
+
+
+def is_legal_score(score_a: int, score_b: int) -> bool:
+    if score_a < 0 or score_b < 0 or score_a == score_b:
+        return False
+    winner, loser = max(score_a, score_b), min(score_a, score_b)
+    return any(_valid_for_target(winner, loser, t) for t in TARGETS)
+
+
+def validate_score(score_a: int, score_b: int) -> None:
+    """Raise ScoreError if (score_a, score_b) isn't a legal result."""
+    if score_a < 0 or score_b < 0:
+        raise ScoreError("Scores can't be negative.")
+    if score_a == score_b:
+        raise ScoreError("Ping pong has no ties — the scores must differ.")
+    if not is_legal_score(score_a, score_b):
+        winner, loser = max(score_a, score_b), min(score_a, score_b)
+        raise ScoreError(
+            f"{winner}-{loser} isn't a legal result. "
+            "Games go to 5, 11, or 21 and must be won by 2."
+        )
