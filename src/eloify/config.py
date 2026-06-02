@@ -22,3 +22,7 @@ SPREADSHEET_ID = os.environ.get(
 )
 GAMES_GID = int(os.environ.get("ELOIFY_GAMES_GID", "0"))
 PLAYERS_GID = int(os.environ.get("ELOIFY_PLAYERS_GID", "604449976"))
+
+# Which rating model `elo` uses when --model isn't passed. None falls back to
+# the registry default; set ELOIFY_MODEL to any key shown by `elo models`.
+DEFAULT_MODEL = os.environ.get("ELOIFY_MODEL") or None
