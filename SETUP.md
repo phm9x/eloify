@@ -36,3 +36,7 @@ elo add duncan peter 21 18
 ```
 
 That's it — the sheet is already set up and shared.
+
+> **NB:** `pipx install -e .` links the command to the repo, so a `git pull` is
+> usually all you need. If a pull adds a new dependency (or the `elo` command
+> starts misbehaving), refresh the install with `pipx reinstall eloify`.
