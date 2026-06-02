@@ -16,6 +16,9 @@ build/
 dist/
 .eggs/
 
+# Headshot source images — only the rendered ASCII (.txt) is committed
+/headshots/
+
 # OS / editors
 .DS_Store
 .idea/
