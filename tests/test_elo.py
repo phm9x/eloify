@@ -1,6 +1,6 @@
 import math
 
-from eloify.elo import compute_deltas, expected, mov_multiplier
+from eloify.elo import compute_deltas, expected, mov_multiplier, projected_score
 
 
 def test_expected_symmetry():
@@ -39,3 +39,24 @@ def test_upset_amplified_vs_expected_win():
 
 def test_mov_multiplier_grows_with_margin():
     assert mov_multiplier(2, 1000, 1000) < mov_multiplier(18, 1000, 1000)
+
+
+def test_projected_score_favorite_reaches_target():
+    fav, dog = projected_score(0.65)
+    assert fav == 21
+    assert 0 <= dog < fav
+
+
+def test_projected_score_even_match_is_close():
+    # A coin-flip can't read as a runaway; the underdog is capped near target.
+    assert projected_score(0.5) == (21, 19)
+
+
+def test_projected_score_blowout_for_heavy_favorite():
+    _, dog = projected_score(0.95)
+    assert dog <= 2
+
+
+def test_projected_score_handles_either_side():
+    # win_prob below 0.5 means the *other* player is the favorite, same score.
+    assert projected_score(0.3) == projected_score(0.7)

@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.table import Table
 
 from . import config, elo, engine
+from .chart import line_chart
 from .elo import Model
 from .parse import ParseError, parse_add
 from .sheets import SheetsError, Store
@@ -369,8 +370,11 @@ def _resolve_player(name: str, known: list[str]) -> str:
 @main.command()
 @click.argument("name")
 @click.argument("opponent", required=False)
+@click.option("--no-graph", is_flag=True, help="Hide the rating-trend graph.")
 @model_option
-def history(name: str, opponent: str | None, model_key: str | None) -> None:
+def history(
+    name: str, opponent: str | None, no_graph: bool, model_key: str | None
+) -> None:
     """Show a player's recent games and rating trend.
 
     Pass a second name for head-to-head:  elo history peter duncan
@@ -412,9 +416,24 @@ def history(name: str, opponent: str | None, model_key: str | None) -> None:
             console.print(f"[dim]{player} hasn't played any games yet.[/]")
         return
 
-    title = f"📜 {player} vs {rival}" if rival else f"📜 {player}"
     wins = sum(1 for r in rows if r[1] == "W")
     losses = len(rows) - wins
+
+    # Rating-trend graph: start rating, then the rating after each game.
+    if not no_graph:
+        trend = [rows[0][5]] + [r[6] for r in rows]
+        graph = line_chart(trend)
+        if graph:
+            scope = f"{player} vs {rival}" if rival else player
+            console.print(f"[bold]📈 {scope}[/] [dim]· {model.label}[/]")
+            for line in graph:
+                console.print(line, style="cyan", highlight=False)
+            console.print(
+                f"[dim]games #{rows[0][0]} → #{rows[-1][0]} · {len(rows)} played[/]"
+            )
+            console.print()
+
+    title = f"📜 {player} vs {rival}" if rival else f"📜 {player}"
     table = Table(title=title, caption=f"{player} {wins}-{losses} {rival}" if rival else None)
     table.add_column("#", style="dim", justify="right")
     table.add_column("Result")
@@ -428,6 +447,60 @@ def history(name: str, opponent: str | None, model_key: str | None) -> None:
             f"{_fmt(before)}→{_fmt(after)}",
         )
     console.print(table)
+
+
+@main.command()
+@click.argument("name")
+@click.argument("opponent")
+@click.option("--no-graph", is_flag=True, help="Hide the rating-trend graphs.")
+@model_option
+def odds(name: str, opponent: str, no_graph: bool, model_key: str | None) -> None:
+    """Odds of one player beating another, with a projected score.
+
+    elo odds peter duncan
+    """
+    model = _resolve_model(model_key)
+    store = _store()
+    games = [engine.record_to_game(g) for g in store.read_games()]
+    known = store.player_names()
+    p1 = _resolve_player(name, known)
+    p2 = _resolve_player(opponent, known)
+    if p1 == p2:
+        err.print("[bold red]✗[/] Pick two different players.")
+        sys.exit(1)
+
+    stats = engine.replay(known, games, model)
+    r1, r2 = stats[p1].rating, stats[p2].rating
+    p1_win = elo.expected(r1, r2)
+    fav, fav_p = (p1, p1_win) if p1_win >= 0.5 else (p2, 1 - p1_win)
+    fav_pts, dog_pts = elo.projected_score(fav_p)
+
+    console.print()
+    console.print(
+        f"  [bold]{p1}[/] [dim]{_fmt(r1)}[/]  vs  "
+        f"[bold]{p2}[/] [dim]{_fmt(r2)}[/]  [dim]· {model.label}[/]"
+    )
+    console.print(
+        f"  win odds:  {p1} [bold]{p1_win * 100:.0f}%[/]  ·  "
+        f"{p2} [bold]{(1 - p1_win) * 100:.0f}%[/]"
+    )
+    if fav_p < 1.0:
+        console.print(f"  [dim]≈ {fav_p / (1 - fav_p):.1f} : 1 favoring {fav}[/]")
+    console.print(f"  expected score:  [bold]{fav_pts}–{dog_pts}[/] favoring {fav}")
+    console.print()
+
+    if no_graph:
+        return
+    for who, now in ((p1, r1), (p2, r2)):
+        trend = engine.rating_trend(games, who, model)
+        graph = line_chart(trend)
+        if graph:
+            console.print(f"[bold]📈 {who}[/] [dim]· now {_fmt(now)}[/]")
+            for line in graph:
+                console.print(line, style="cyan", highlight=False)
+        else:
+            console.print(f"[dim]{who} hasn't played enough games to graph.[/]")
+        console.print()
 
 
 @main.command()

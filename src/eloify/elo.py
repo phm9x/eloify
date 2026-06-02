@@ -44,6 +44,18 @@ def mov_multiplier(margin: int, winner_rating: float, loser_rating: float) -> fl
     )
 
 
+def projected_score(win_prob: float, target: int = 21) -> tuple[int, int]:
+    """A plausible final game score to `target` for a given win probability.
+
+    The favorite reaches `target`; the underdog's points scale with how close
+    the matchup is (their share of the expected odds), capped at `target - 2`
+    so the result still reads as a win. Returns (favorite_points, underdog).
+    """
+    fav = max(win_prob, 1.0 - win_prob)
+    dog_points = round(target * (1.0 - fav) / fav) if fav > 0 else target
+    return target, min(dog_points, target - 2)
+
+
 def compute_deltas(
     team_a_rating: float,
     team_b_rating: float,
