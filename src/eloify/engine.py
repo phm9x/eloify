@@ -140,6 +140,37 @@ def preview_game(
     return out
 
 
+def rating_trend(
+    games: list[Game],
+    player: str,
+    model: Model | None = None,
+    *,
+    opponent: str | None = None,
+) -> list[float]:
+    """The player's ELO over time: their rating going in, then after each game
+    they played (optionally only games against `opponent`).
+
+    Ratings still evolve through every game in the log — `opponent` only filters
+    which points are recorded. Returns [] if the player hasn't played a matching
+    game, else a series of length (games played + 1) suitable for `line_chart`.
+    """
+    model = model or default_model()
+    stats: dict[str, PlayerStats] = {}
+    points: list[float] = []
+    for game in games:
+        before = stats[player].rating if player in stats else model.start_rating
+        apply_game(stats, game, model)
+        if player not in (game.team_a + game.team_b):
+            continue
+        their_team = game.team_b if player in game.team_a else game.team_a
+        if opponent and opponent not in their_team:
+            continue
+        if not points:
+            points.append(before)
+        points.append(stats[player].rating)
+    return points
+
+
 def match_candidates(token: str, known: list[str]) -> list[str]:
     """Fuzzy-match a typed token to known player names (exact > prefix > substr)."""
     tl = token.lower()

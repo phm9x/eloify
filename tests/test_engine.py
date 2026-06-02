@@ -1,4 +1,4 @@
-from eloify.engine import replay_modes
+from eloify.engine import rating_trend, replay_modes
 from eloify.models import Game
 
 
@@ -41,3 +41,22 @@ def test_ratings_are_independent_across_modes():
     # but moved in doubles.
     assert modes["singles"]["alex"].rating == 1000
     assert modes["doubles"]["alex"].rating < 1000
+
+
+def test_rating_trend_has_a_point_per_game_plus_start():
+    trend = rating_trend(GAMES, "duncan")
+    # duncan played all 3 games: starting rating + one point after each.
+    assert len(trend) == 4
+    assert trend[0] == 1000
+
+
+def test_rating_trend_empty_for_unseen_player():
+    assert rating_trend(GAMES, "nobody") == []
+
+
+def test_rating_trend_opponent_filter():
+    # peter only ever faced duncan (game 1), so head-to-head has one game.
+    trend = rating_trend(GAMES, "peter", opponent="duncan")
+    assert len(trend) == 2  # start + the one game
+    # Ratings still evolve through the whole log: peter lost game 1, so it dips.
+    assert trend[-1] < trend[0]
