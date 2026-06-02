@@ -9,7 +9,8 @@ import questionary
 from rich.console import Console
 from rich.table import Table
 
-from . import engine
+from . import config, elo, engine
+from .elo import Model
 from .parse import ParseError, parse_add
 from .sheets import SheetsError, Store
 from .validate import ScoreError, validate_score
@@ -23,6 +24,29 @@ def _store() -> Store:
         return Store()
     except SheetsError as e:
         err.print(f"[bold red]✗[/] {e}")
+        sys.exit(1)
+
+
+def model_option(f):
+    """Shared --model option: pick a rating model (see `elo models`)."""
+    return click.option(
+        "-m",
+        "--model",
+        "model_key",
+        default=None,
+        metavar="KEY",
+        help="Rating model: a key or number from `elo models`. Defaults to ELOIFY_MODEL or 'mov'.",
+    )(f)
+
+
+def _resolve_model(model_key: str | None) -> Model:
+    """Resolve a --model key (or the configured default) to a Model, or exit."""
+    try:
+        return elo.get_model(model_key or config.DEFAULT_MODEL)
+    except KeyError as e:
+        bad = e.args[0] if e.args else model_key
+        choices = ", ".join(elo.model_keys())
+        err.print(f"[bold red]✗[/] Unknown model {bad!r}. Available: {choices}.")
         sys.exit(1)
 
 
@@ -149,11 +173,13 @@ def _interactive_add(known: list[str]):
 @main.command()
 @click.argument("tokens", nargs=-1)
 @click.option("-y", "--yes", is_flag=True, help="Skip the confirmation prompt.")
-def add(tokens: tuple[str, ...], yes: bool) -> None:
+@model_option
+def add(tokens: tuple[str, ...], yes: bool, model_key: str | None) -> None:
     """Log a game:  elo add duncan peter 21 18  (1v1)  ·  ...sam alex 21 15 (2v2).
 
     Run `elo add` with no arguments for a guided, interactive flow.
     """
+    model = _resolve_model(model_key)
     store = _store()
     games = store.read_games()
     known = store.player_names()
@@ -192,8 +218,8 @@ def add(tokens: tuple[str, ...], yes: bool) -> None:
             return
         mode, team_a, team_b, new_players, score_a, score_b = result
 
-    stats = engine.replay(known, [engine.record_to_game(g) for g in games])
-    preview = engine.preview_game(stats, team_a, team_b, score_a, score_b)
+    stats = engine.replay(known, [engine.record_to_game(g) for g in games], model)
+    preview = engine.preview_game(stats, team_a, team_b, score_a, score_b, model)
 
     # Confirmation view.
     def side(names: list[str], score: int, winner: bool) -> str:
@@ -205,7 +231,7 @@ def add(tokens: tuple[str, ...], yes: bool) -> None:
 
     a_won = score_a > score_b
     console.print()
-    console.print(f"  [dim]{mode}[/]")
+    console.print(f"  [dim]{mode} · {model.label}[/]")
     console.print("  Team A:  " + side(team_a, score_a, a_won))
     console.print("  Team B:  " + side(team_b, score_b, not a_won))
     console.print("  [dim]projected:[/] " + "   ".join(
@@ -238,15 +264,18 @@ def add(tokens: tuple[str, ...], yes: bool) -> None:
     type=click.Choice(["overall", "singles", "doubles"], case_sensitive=False),
 )
 @click.option("--top", type=int, default=None, help="Show only the top N players.")
-def board(which: str | None, top: int | None) -> None:
+@model_option
+def board(which: str | None, top: int | None, model_key: str | None) -> None:
     """Show the leaderboard.
 
     `elo board` shows overall ELO with singles & doubles columns.
     `elo board singles` / `elo board doubles` rank by that game type only.
+    Use `--model KEY` to score the same games with a different rating model.
     """
+    model = _resolve_model(model_key)
     store = _store()
     games = [engine.record_to_game(g) for g in store.read_games()]
-    modes = engine.replay_modes(store.player_names(), games)
+    modes = engine.replay_modes(store.player_names(), games, model)
     which = (which or "overall").lower()
 
     # Filtered board: rank by one game type, only its W/L and ELO.
@@ -256,7 +285,7 @@ def board(which: str | None, top: int | None) -> None:
         if top:
             ranked = ranked[:top]
         label = "Singles (1v1)" if which == "singles" else "Doubles (2v2)"
-        table = Table(title=f"🏓 {label} Leaderboard")
+        table = Table(title=f"🏓 {label} Leaderboard", caption=f"model: {model.label}")
         table.add_column("#", justify="right", style="dim")
         table.add_column("Player")
         table.add_column("ELO", justify="right", style="bold")
@@ -281,7 +310,7 @@ def board(which: str | None, top: int | None) -> None:
         s = stats.get(name)
         return _fmt(s.rating) if s and s.games > 0 else "[dim]–[/]"
 
-    table = Table(title="🏓 Eloify Leaderboard")
+    table = Table(title="🏓 Eloify Leaderboard", caption=f"model: {model.label}")
     table.add_column("#", justify="right", style="dim")
     table.add_column("Player")
     table.add_column("Overall", justify="right", style="bold")
@@ -300,11 +329,15 @@ def board(which: str | None, top: int | None) -> None:
 
 
 @main.command()
-def players() -> None:
+@model_option
+def players(model_key: str | None) -> None:
     """List registered players and their current ELO."""
+    model = _resolve_model(model_key)
     store = _store()
     names = store.player_names()
-    stats = engine.replay(names, [engine.record_to_game(g) for g in store.read_games()])
+    stats = engine.replay(
+        names, [engine.record_to_game(g) for g in store.read_games()], model
+    )
     if not names:
         console.print("[dim]No players yet.[/]")
         return
@@ -336,11 +369,13 @@ def _resolve_player(name: str, known: list[str]) -> str:
 @main.command()
 @click.argument("name")
 @click.argument("opponent", required=False)
-def history(name: str, opponent: str | None) -> None:
+@model_option
+def history(name: str, opponent: str | None, model_key: str | None) -> None:
     """Show a player's recent games and rating trend.
 
     Pass a second name for head-to-head:  elo history peter duncan
     """
+    model = _resolve_model(model_key)
     store = _store()
     games = [engine.record_to_game(g) for g in store.read_games()]
     known = store.player_names()
@@ -351,11 +386,11 @@ def history(name: str, opponent: str | None) -> None:
         sys.exit(1)
 
     # Replay incrementally to capture this player's rating after each game.
-    stats = {n: engine.PlayerStats(name=n) for n in known}
+    stats = {n: engine.PlayerStats(name=n, rating=model.start_rating) for n in known}
     rows = []
     for g in games:
-        before = stats.get(player, engine.PlayerStats(player)).rating
-        _apply_single(stats, g)
+        before = stats[player].rating if player in stats else model.start_rating
+        engine.apply_game(stats, g, model)
         after = stats[player].rating if player in stats else before
         if player not in (g.team_a + g.team_b):
             continue
@@ -442,30 +477,23 @@ def init() -> None:
         console.print("[dim]Both tabs already have headers — nothing to do.[/]")
 
 
-# --- small helper for history's incremental replay ---
-def _apply_single(stats: dict, g) -> None:
-    from statistics import mean
-
-    from .elo import START_RATING, compute_deltas
-
-    def trate(names):
-        return mean(stats[n].rating if n in stats else START_RATING for n in names)
-
-    ra, rb = trate(g.team_a), trate(g.team_b)
-    da, db = compute_deltas(ra, rb, g.score_a, g.score_b)
-    a_won = g.score_a > g.score_b
-    for n in g.team_a:
-        s = stats.setdefault(n, engine.PlayerStats(n))
-        s.rating += da
-        s.games += 1
-        s.wins += a_won
-        s.losses += not a_won
-    for n in g.team_b:
-        s = stats.setdefault(n, engine.PlayerStats(n))
-        s.rating += db
-        s.games += 1
-        s.wins += not a_won
-        s.losses += a_won
+@main.command()
+def models() -> None:
+    """List the available rating models for `--model`."""
+    active = _resolve_model(None)
+    table = Table(title="🧮 Rating models")
+    table.add_column("#", justify="right", style="dim")
+    table.add_column("Key")
+    table.add_column("Name")
+    table.add_column("Description")
+    for i, m in enumerate(elo.all_models(), 1):
+        tag = " [green](default)[/]" if m.key == active.key else ""
+        table.add_row(str(i), f"[bold]{m.key}[/]{tag}", m.label, m.description)
+    console.print(table)
+    console.print(
+        "[dim]Pick one per command with --model KEY (or its #), "
+        "or set ELOIFY_MODEL to change the default.[/]"
+    )
 
 
 if __name__ == "__main__":
