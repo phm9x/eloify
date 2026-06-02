@@ -37,6 +37,16 @@ elo add duncan peter 21 18
 
 That's it — the sheet is already set up and shared.
 
+## 4. (Optional) Adding headshots
+
+Viewing headshots needs nothing extra. *Adding* one (`elo set-headshot`) renders
+a photo to braille, which needs a couple of extra tools:
+
+```bash
+pipx inject eloify pillow opencv-python-headless   # image + face-crop libs
+brew install chafa                                  # braille renderer
+```
+
 > **NB:** `pipx install -e .` links the command to the repo, so a `git pull` is
 > usually all you need. If a pull adds a new dependency (or the `elo` command
 > starts misbehaving), refresh the install with `pipx reinstall eloify`.
