@@ -6,12 +6,14 @@ import sys
 
 import click
 import questionary
-from rich.console import Console
+from rich.console import Console, Group
 from rich.table import Table
+from rich.text import Text
 
-from . import config, elo, engine
+from . import config, elo, engine, headshot
 from .chart import line_chart
 from .elo import Model
+from .headshot import HeadshotError
 from .parse import ParseError, parse_add
 from .sheets import SheetsError, Store
 from .validate import ScoreError, validate_score
@@ -358,6 +360,105 @@ def add_player(name: str) -> None:
     console.print(f"[green]✓[/] Added {name}.")
 
 
+# A "panel" is a (renderable, width) pair; width lets _dashboard decide whether
+# the panels fit side by side on the current terminal.
+Panel = tuple[object, int]
+
+
+def _headshot_panel(username: str) -> Panel | None:
+    """A player's braille avatar as a panel, or None if they don't have one."""
+    art = headshot.art_text(username)
+    if not art:
+        return None
+    lines = art.splitlines()
+    width = max((len(line) for line in lines), default=0)
+    return Text("\n".join(lines), style="grey70", no_wrap=True), width
+
+
+def _graph_panel(trend: list[float], header: str, footer: str | None = None) -> Panel | None:
+    """A rating-trend line chart (with header/footer) as a panel, or None."""
+    chart = line_chart(trend)
+    if not chart:
+        return None
+    parts: list[object] = [Text(header, style="bold"), Text("\n".join(chart), style="cyan", no_wrap=True)]
+    if footer:
+        parts.append(Text(footer, style="dim"))
+    width = max(len(line) for line in chart)
+    return Group(*parts), max(width, len(header), len(footer or ""))
+
+
+def _print_headshot(username: str) -> bool:
+    """Print a player's committed avatar if one exists. Returns whether it drew."""
+    panel = _headshot_panel(username)
+    if not panel:
+        return False
+    console.print(panel[0])
+    return True
+
+
+def _dashboard(panels: list[Panel | None]) -> None:
+    """Render panels side by side if the terminal is wide enough, else stacked.
+
+    Either way every panel is shown — side-by-side is just the nicer layout when
+    there's room (headshot · table · graph).
+    """
+    present = [p for p in panels if p]
+    if not present:
+        return
+    gap = 3
+    total = sum(w for _, w in present) + gap * (len(present) - 1)
+    if len(present) > 1 and console.width >= total:
+        grid = Table.grid(padding=(0, gap))
+        for _ in present:
+            grid.add_column()
+        grid.add_row(*(r for r, _ in present))
+        console.print(grid)
+    else:
+        for i, (renderable, _) in enumerate(present):
+            if i:
+                console.print()
+            console.print(renderable)
+
+
+@main.command(name="set-headshot")
+@click.argument("name")
+@click.argument("source")
+def set_headshot(name: str, source: str) -> None:
+    """Give a player a headshot from an image file or URL.
+
+    elo set-headshot pablo ~/Pictures/pablo.jpg
+    elo set-headshot pablo https://example.com/pablo.png
+
+    The photo is cropped to a small thumbnail (kept in the git-ignored
+    headshots/ folder) and its ASCII rendering is written under the package —
+    commit that .txt to give the player a face for everyone.
+    """
+    store = _store()
+    player = _resolve_player(name, store.player_names())
+    try:
+        art = headshot.generate(player, source)
+    except HeadshotError as e:
+        err.print(f"[bold red]✗[/] {e}")
+        sys.exit(1)
+    console.print(f"[green]✓[/] Saved {player}'s headshot ([dim]{art}[/] — commit it).")
+    console.print()
+    _print_headshot(player)
+
+
+@main.command(name="headshot")
+@click.argument("name")
+def show_headshot(name: str) -> None:
+    """Show a player's ASCII headshot.  elo headshot duncan"""
+    store = _store()
+    player = _resolve_player(name, store.player_names())
+    console.print(f"[bold]{player}[/]")
+    if not _print_headshot(player):
+        console.print(
+            f"[dim]No headshot for {player}. Add one with "
+            f"`elo set-headshot {player} <file-or-url>`.[/]"
+        )
+
+
 def _resolve_player(name: str, known: list[str]) -> str:
     """Resolve a name to a known player, or exit with an error."""
     resolved = engine.match_candidates(name, known)
@@ -418,23 +519,15 @@ def history(
 
     wins = sum(1 for r in rows if r[1] == "W")
     losses = len(rows) - wins
+    scope = f"{player} vs {rival}" if rival else player
 
-    # Rating-trend graph: start rating, then the rating after each game.
-    if not no_graph:
-        trend = [rows[0][5]] + [r[6] for r in rows]
-        graph = line_chart(trend)
-        if graph:
-            scope = f"{player} vs {rival}" if rival else player
-            console.print(f"[bold]📈 {scope}[/] [dim]· {model.label}[/]")
-            for line in graph:
-                console.print(line, style="cyan", highlight=False)
-            console.print(
-                f"[dim]games #{rows[0][0]} → #{rows[-1][0]} · {len(rows)} played[/]"
-            )
-            console.print()
-
-    title = f"📜 {player} vs {rival}" if rival else f"📜 {player}"
-    table = Table(title=title, caption=f"{player} {wins}-{losses} {rival}" if rival else None)
+    # Games table.
+    caption = (
+        f"{player} {wins}-{losses} {rival} · {model.label}"
+        if rival
+        else f"{wins}-{losses} · {model.label}"
+    )
+    table = Table(title=f"📜 {scope}", caption=caption)
     table.add_column("#", style="dim", justify="right")
     table.add_column("Result")
     table.add_column("Score", justify="right")
@@ -446,7 +539,16 @@ def history(
             str(gid), f"[{colour}]{res}[/]", f"{mine}-{theirs}", opp,
             f"{_fmt(before)}→{_fmt(after)}",
         )
-    console.print(table)
+
+    # Lay out headshot · table · graph (stacking if the terminal is narrow).
+    head = None if rival else _headshot_panel(player)
+    graph = None
+    if not no_graph:
+        trend = [rows[0][5]] + [r[6] for r in rows]
+        graph = _graph_panel(
+            trend, "📈 rating", f"games #{rows[0][0]} → #{rows[-1][0]} · {len(rows)} played"
+        )
+    _dashboard([head, (table, console.measure(table).maximum), graph])
 
 
 @main.command()
@@ -475,32 +577,33 @@ def odds(name: str, opponent: str, no_graph: bool, model_key: str | None) -> Non
     fav, fav_p = (p1, p1_win) if p1_win >= 0.5 else (p2, 1 - p1_win)
     fav_pts, dog_pts = elo.projected_score(fav_p)
 
-    console.print()
-    console.print(
-        f"  [bold]{p1}[/] [dim]{_fmt(r1)}[/]  vs  "
-        f"[bold]{p2}[/] [dim]{_fmt(r2)}[/]  [dim]· {model.label}[/]"
-    )
-    console.print(
-        f"  win odds:  {p1} [bold]{p1_win * 100:.0f}%[/]  ·  "
-        f"{p2} [bold]{(1 - p1_win) * 100:.0f}%[/]"
-    )
+    # Middle stat block, flanked by the two players' headshots (a versus card).
+    lines = [
+        f"[bold]{p1}[/] [dim]{_fmt(r1)}[/]",
+        "[dim]vs[/]",
+        f"[bold]{p2}[/] [dim]{_fmt(r2)}[/]",
+        "",
+        f"{p1}  [bold]{p1_win * 100:.0f}%[/]",
+        f"{p2}  [bold]{(1 - p1_win) * 100:.0f}%[/]",
+    ]
     if fav_p < 1.0:
-        console.print(f"  [dim]≈ {fav_p / (1 - fav_p):.1f} : 1 favoring {fav}[/]")
-    console.print(f"  expected score:  [bold]{fav_pts}–{dog_pts}[/] favoring {fav}")
+        lines.append(f"[dim]≈ {fav_p / (1 - fav_p):.1f} : 1 → {fav}[/]")
+    lines.append(f"[dim]score[/] [bold]{fav_pts}–{dog_pts}[/] [dim]{fav}[/]")
+    middle = Group(*(Text.from_markup(line, justify="center") for line in lines))
+    mid_w = max(len(Text.from_markup(line).plain) for line in lines)
+
+    console.print()
+    _dashboard([_headshot_panel(p1), (middle, mid_w), _headshot_panel(p2)])
     console.print()
 
     if no_graph:
         return
+    # Both players' rating trends, side by side.
+    trends = []
     for who, now in ((p1, r1), (p2, r2)):
-        trend = engine.rating_trend(games, who, model)
-        graph = line_chart(trend)
-        if graph:
-            console.print(f"[bold]📈 {who}[/] [dim]· now {_fmt(now)}[/]")
-            for line in graph:
-                console.print(line, style="cyan", highlight=False)
-        else:
-            console.print(f"[dim]{who} hasn't played enough games to graph.[/]")
-        console.print()
+        panel = _graph_panel(engine.rating_trend(games, who, model), f"📈 {who}", f"now {_fmt(now)}")
+        trends.append(panel or (Text(f"{who}: not enough games", style="dim"), len(who) + 20))
+    _dashboard(trends)
 
 
 @main.command()
