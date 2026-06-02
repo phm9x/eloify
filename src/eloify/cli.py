@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.table import Table
 
 from . import config, elo, engine
+from .chart import line_chart
 from .elo import Model
 from .parse import ParseError, parse_add
 from .sheets import SheetsError, Store
@@ -369,8 +370,11 @@ def _resolve_player(name: str, known: list[str]) -> str:
 @main.command()
 @click.argument("name")
 @click.argument("opponent", required=False)
+@click.option("--no-graph", is_flag=True, help="Hide the rating-trend graph.")
 @model_option
-def history(name: str, opponent: str | None, model_key: str | None) -> None:
+def history(
+    name: str, opponent: str | None, no_graph: bool, model_key: str | None
+) -> None:
     """Show a player's recent games and rating trend.
 
     Pass a second name for head-to-head:  elo history peter duncan
@@ -412,9 +416,24 @@ def history(name: str, opponent: str | None, model_key: str | None) -> None:
             console.print(f"[dim]{player} hasn't played any games yet.[/]")
         return
 
-    title = f"📜 {player} vs {rival}" if rival else f"📜 {player}"
     wins = sum(1 for r in rows if r[1] == "W")
     losses = len(rows) - wins
+
+    # Rating-trend graph: start rating, then the rating after each game.
+    if not no_graph:
+        trend = [rows[0][5]] + [r[6] for r in rows]
+        graph = line_chart(trend)
+        if graph:
+            scope = f"{player} vs {rival}" if rival else player
+            console.print(f"[bold]📈 {scope}[/] [dim]· {model.label}[/]")
+            for line in graph:
+                console.print(line, style="cyan", highlight=False)
+            console.print(
+                f"[dim]games #{rows[0][0]} → #{rows[-1][0]} · {len(rows)} played[/]"
+            )
+            console.print()
+
+    title = f"📜 {player} vs {rival}" if rival else f"📜 {player}"
     table = Table(title=title, caption=f"{player} {wins}-{losses} {rival}" if rival else None)
     table.add_column("#", style="dim", justify="right")
     table.add_column("Result")
