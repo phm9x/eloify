@@ -31,9 +31,28 @@ flow (à la `gh pr create`): pick the game type, select players from the roster
 | `elo players` | Roster with current ELO |
 | `elo add-player "Name"` | Register a player (optional) |
 | `elo history <name> [opponent]` | A player's recent games + trend; add a 2nd name for head-to-head |
+| `elo odds <p1> <p2>` | Win odds, projected score, and each player's rating trend |
+| `elo headshot <name>` | Show a player's ASCII-art headshot |
+| `elo set-headshot <name> <file-or-url>` | Give a player a headshot |
 | `elo last [N]` | The last N games |
 | `elo undo [-y]` | Remove the most recent game |
 | `elo init` | One-time: write header rows to empty tabs |
+
+## Headshots
+
+Players can have a little braille avatar, shown in `elo history` (and via
+`elo headshot <name>`). Add one from a local file or a URL:
+
+```bash
+elo set-headshot pablo ~/Pictures/pablo.jpg          # from a local file
+elo set-headshot pablo https://example.com/pablo.png # or a URL
+```
+
+Only the **rendered braille** is committed (`src/eloify/assets/headshots/<username>.txt`)
+— the source photo is face-cropped to a thumbnail kept in the git-ignored
+`headshots/` folder. Commit the new `.txt` to share the face. Adding headshots
+needs the extra (`pip install 'eloify[headshots]'` for Pillow + OpenCV) and
+`chafa` (`brew install chafa`) for the rendering; displaying them needs neither.
 
 ## Scoring & rating
 
