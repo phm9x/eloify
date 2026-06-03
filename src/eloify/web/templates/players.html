@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Players · Eloify{% endblock %}
+{% block content %}
+<h1>Players</h1>
+{% if ranked %}
+<ul class="player-list">
+  {% for s in ranked %}
+  <li>
+    <a href="/history/{{ s.name }}?model={{ model_key }}">{{ s.name }}</a>
+    <span class="dim">{{ s.rating | elo }} · {{ s.games }} games</span>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty">No players yet.</p>
+{% endif %}
+
+<form class="card add-player" method="post" action="/players">
+  <input type="hidden" name="model" value="{{ model_key }}">
+  <h2>Add a player</h2>
+  <p class="dim">Optional — logging a game with a new name registers them automatically.</p>
+  <div class="row">
+    <input type="text" name="name" placeholder="Name" required>
+    <button type="submit">Add</button>
+  </div>
+</form>
+<p class="caption">model: {{ model.label }}</p>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ player }} · Eloify{% endblock %}
+{% block content %}
+<h1>{{ player }}</h1>
+{% if art %}
+<pre class="headshot big">{{ art }}</pre>
+{% else %}
+<p class="empty">No headshot for {{ player }}. Add one with the CLI:
+  <code>elo set-headshot {{ player }} &lt;file-or-url&gt;</code>.</p>
+{% endif %}
+<p><a href="/history/{{ player }}?model={{ model_key }}">← {{ player }}'s history</a></p>
+{% endblock %}

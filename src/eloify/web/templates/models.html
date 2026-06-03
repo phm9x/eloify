@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Models · Eloify{% endblock %}
+{% block content %}
+<h1>🧮 Rating models</h1>
+<p class="dim">Pick one from the model selector in the nav (remembered for next time).</p>
+<table class="grid">
+  <thead><tr><th>#</th><th>Key</th><th>Name</th><th>Description</th></tr></thead>
+  <tbody>
+    {% for m in models %}
+    <tr>
+      <td class="dim">{{ loop.index }}</td>
+      <td class="strong">{{ m.key }}{% if m.key == active.key %} <span class="badge">default</span>{% endif %}</td>
+      <td>{{ m.label }}</td>
+      <td class="dim">{{ m.description }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

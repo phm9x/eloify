@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Eloify{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="/?model={{ model_key }}">🏓 Eloify</a>
+    <nav>
+      <a href="/?model={{ model_key }}">Board</a>
+      <a href="/players?model={{ model_key }}">Players</a>
+      <a href="/odds?model={{ model_key }}">Odds</a>
+      <a href="/last?model={{ model_key }}">Last</a>
+      <a href="/models?model={{ model_key }}">Models</a>
+      <a class="cta" href="/game/new?model={{ model_key }}">+ Log a game</a>
+    </nav>
+    <form class="model-picker" method="get" action="{{ request.url.path }}">
+      <label>model
+        <select name="model" onchange="this.form.submit()">
+          {% for m in models %}
+          <option value="{{ m.key }}" {% if m.key == model_key %}selected{% endif %}>{{ m.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </form>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="foot">
+    <span>Google Sheets is the source of truth (shared with the <code>elo</code> CLI).</span>
+    <span>Headshots are set with the CLI (<code>elo set-headshot</code>); the web only shows them.</span>
+  </footer>
+</body>
+</html>
