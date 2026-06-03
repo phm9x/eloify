@@ -75,19 +75,40 @@ its own `pip` inside. You just need Python 3.10+ (`python3 --version`; on macOS,
 python3 -m venv .venv          # one-time: creates ./.venv with its own pip
 source .venv/bin/activate       # activate it (re-run this in each new shell)
 pip install -e ".[web]"         # install the web deps into the venv
-elo-web                         # → http://localhost:8000
+python -m eloify.web            # → http://localhost:8000
 ```
 
-`elo-web` reads the same `~/.config/eloify/.env` as the CLI and runs uvicorn with
-`--workers 1` so its short data cache stays coherent. For autoreload while
-developing: `uvicorn eloify.web.app:app --reload`.
+`python -m eloify.web` reads the same `~/.config/eloify/.env` as the CLI and runs
+uvicorn with `--workers 1` so its short data cache stays coherent. For autoreload
+while developing: `uvicorn eloify.web.app:app --reload`.
 
-To run it again later: `cd` into the repo, `source .venv/bin/activate`, `elo-web`.
-(`deactivate` leaves the venv.)
+To run it again later: `cd` into the repo, `source .venv/bin/activate`,
+`python -m eloify.web`. (`deactivate` leaves the venv.)
+
+> **Use `python -m eloify.web`, not the bare `elo-web` command.** There's also an
+> `elo-web` script, but if you ever installed `elo` globally (step 1) an old copy
+> can sit on your `PATH` and shadow the venv's — running it against a Python that
+> has no `fastapi`. `python -m eloify.web` always uses the interpreter from the
+> activated venv, so it sidesteps that. See Troubleshooting below.
 
 > We use a venv here rather than `pipx` (step 1): `pipx` is for installing the
 > standalone `elo` command globally, whereas the web server runs from the repo
 > with its own dependencies, which a venv keeps neatly isolated.
+
+### Troubleshooting
+
+**`ModuleNotFoundError: No module named 'fastapi'` when starting the server** —
+the deps installed fine, but the wrong `elo-web` ran. The traceback names the
+culprit, e.g. `/Users/you/.local/bin/elo-web` (a stale global install) instead of
+`…/eloify/.venv/bin/elo-web`. Confirm and fix:
+
+```bash
+which -a elo-web                # likely shows ~/.local/bin/elo-web first
+python -m eloify.web            # ← just use this; it ignores PATH entirely
+```
+
+If you'd rather remove the stale copy: `pipx uninstall eloify` (or delete
+`~/.local/bin/elo-web` / `~/.local/bin/elo` if a plain `pip --user` put them there).
 
 ## 5. (Optional) Adding headshots
 

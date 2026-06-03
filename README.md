@@ -67,8 +67,11 @@ docker compose up --build                    # → http://localhost:8000 (and on
 
 # or local Python, in a virtualenv (python3 -m venv brings its own pip):
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[web]" && elo-web           # → http://localhost:8000
+pip install -e ".[web]" && python -m eloify.web   # → http://localhost:8000
 ```
+
+(Use `python -m eloify.web` rather than the bare `elo-web` command — it always
+runs in the active venv, so a stale global `elo-web` on your `PATH` can't shadow it.)
 
 Reads mirror the CLI (board, players, history, odds, last, models); writes are
 an HTMX log-a-game form with a live projected-delta preview, plus add-player and
