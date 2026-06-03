@@ -40,33 +40,54 @@ That's it — the sheet is already set up and shared.
 ## 4. (Optional) Run the web interface
 
 A browser UI with the same board and log-a-game flow, talking to the same sheet.
+You still need credentials (step 2). Pick **one** of the two ways below — they're
+each self-contained, so you don't need `pip`, a virtualenv, or the `elo` CLI from
+step 1 already set up.
 
-**Locally:**
+### Option A — Docker / OrbStack (no Python needed)
 
-```bash
-pip install -e ".[web]"
-elo-web                       # reads the same ~/.config/eloify/.env → http://localhost:8000
-```
-
-(`elo-web` runs uvicorn with `--workers 1` so its short data cache stays
-coherent. For autoreload while developing: `uvicorn eloify.web.app:app --reload`.)
-
-**Docker / OrbStack:**
+The simplest path if you don't already have a Python toolchain. Install
+[OrbStack](https://orbstack.dev) (or Docker Desktop), then from the repo:
 
 ```bash
-docker compose up --build     # http://localhost:8000, also on the LAN + a *.orb.local domain
-```
-
-Compose mounts `~/.config/eloify` read-only for credentials. Because that path
-is mounted at `/root/.config/eloify` inside the container, the simplest setup is
-to pass the key as **inline JSON** rather than a host file path:
-
-```bash
+# Pass the service-account key in as inline JSON (see note below on why):
 export GOOGLE_SERVICE_ACCOUNT_JSON="$(cat ~/.config/eloify/eloify-secret.json)"
 docker compose up --build
 ```
 
-(`ELOIFY_SPREADSHEET_ID` / `ELOIFY_MODEL` are passed through too if set.)
+Open <http://localhost:8000> — it's also reachable on the LAN and at the
+`*.orb.local` domain OrbStack assigns. `ELOIFY_SPREADSHEET_ID` / `ELOIFY_MODEL`
+are passed through too if you set them.
+
+> **Why inline JSON?** Compose mounts `~/.config/eloify` read-only into the
+> container, but a `GOOGLE_SERVICE_ACCOUNT_FILE` path in your `.env` points at a
+> host path that doesn't exist inside the container. Passing the key as
+> `GOOGLE_SERVICE_ACCOUNT_JSON` sidesteps that.
+
+### Option B — Local Python (in a virtualenv)
+
+No system `pip` required: `python3 -m venv` creates an isolated environment with
+its own `pip` inside. You just need Python 3.10+ (`python3 --version`; on macOS,
+`brew install python` if you don't have it).
+
+```bash
+# From inside the repo:
+python3 -m venv .venv          # one-time: creates ./.venv with its own pip
+source .venv/bin/activate       # activate it (re-run this in each new shell)
+pip install -e ".[web]"         # install the web deps into the venv
+elo-web                         # → http://localhost:8000
+```
+
+`elo-web` reads the same `~/.config/eloify/.env` as the CLI and runs uvicorn with
+`--workers 1` so its short data cache stays coherent. For autoreload while
+developing: `uvicorn eloify.web.app:app --reload`.
+
+To run it again later: `cd` into the repo, `source .venv/bin/activate`, `elo-web`.
+(`deactivate` leaves the venv.)
+
+> We use a venv here rather than `pipx` (step 1): `pipx` is for installing the
+> standalone `elo` command globally, whereas the web server runs from the repo
+> with its own dependencies, which a venv keeps neatly isolated.
 
 ## 5. (Optional) Adding headshots
 

@@ -57,13 +57,17 @@ needs the extra (`pip install 'eloify[headshots]'` for Pillow + OpenCV) and
 ## Web interface
 
 Same board, same log-a-game flow, in the browser. It's a second presentation
-layer over the same core (and the same Google Sheet) — see **[SETUP.md](SETUP.md)**.
+layer over the same core (and the same Google Sheet). Two self-contained ways to
+run it (no `pip`/venv needed for the Docker one) — see **[SETUP.md](SETUP.md)** for
+the step-by-step:
 
 ```bash
-pip install -e ".[web]"
-GOOGLE_SERVICE_ACCOUNT_FILE=… elo-web        # → http://localhost:8000
-# or, with Docker / OrbStack:
+# Docker / OrbStack — no Python toolchain required:
 docker compose up --build                    # → http://localhost:8000 (and on the LAN)
+
+# or local Python, in a virtualenv (python3 -m venv brings its own pip):
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[web]" && elo-web           # → http://localhost:8000
 ```
 
 Reads mirror the CLI (board, players, history, odds, last, models); writes are
