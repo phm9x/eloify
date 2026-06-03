@@ -117,7 +117,7 @@ class Model:
 
 
 _REGISTRY: dict[str, Model] = {}
-DEFAULT_MODEL = "mov"
+DEFAULT_MODEL = "provisional"
 
 
 def register(model: Model) -> Model:
