@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Last games · Eloify{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Last {{ n }} games</h1>
+  {% if games %}
+  <form method="post" action="/games/undo"
+        onsubmit="return confirm('Remove the most recent game?')">
+    <input type="hidden" name="model" value="{{ model_key }}">
+    <button type="submit" class="danger">Undo last</button>
+  </form>
+  {% endif %}
+</div>
+{% if games %}
+<table class="grid">
+  <thead><tr><th>#</th><th>Team A</th><th class="num">Score</th><th>Team B</th></tr></thead>
+  <tbody>
+    {% for g in games %}
+    {% set a_won = g.score_a | int > g.score_b | int %}
+    <tr>
+      <td class="dim">{{ g.id }}</td>
+      <td class="{{ 'win' if a_won else '' }}">{{ g.team_a }}</td>
+      <td class="num">{{ g.score_a }}–{{ g.score_b }}</td>
+      <td class="{{ '' if a_won else 'win' }}">{{ g.team_b }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No games logged yet.</p>
+{% endif %}
+{% endblock %}

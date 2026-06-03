@@ -1,0 +1,24 @@
+{% if form.errors %}
+<ul class="errors">{% for e in form.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+{% elif preview %}
+{% set a_won = form.score_a > form.score_b %}
+<div class="preview">
+  <div class="preview-teams">
+    <span class="{{ 'win' if a_won else '' }}">
+      {% for n in form.team_a %}{% if n in form.new_players %}<span class="new">⚠ NEW</span> {% endif %}{{ n }}{% if not loop.last %} &amp; {% endif %}{% endfor %}
+      <strong>{{ form.score_a }}</strong>{% if a_won %} ←{% endif %}
+    </span>
+    <span class="dim">vs</span>
+    <span class="{{ '' if a_won else 'win' }}">
+      {% for n in form.team_b %}{% if n in form.new_players %}<span class="new">⚠ NEW</span> {% endif %}{{ n }}{% if not loop.last %} &amp; {% endif %}{% endfor %}
+      <strong>{{ form.score_b }}</strong>{% if not a_won %} ←{% endif %}
+    </span>
+  </div>
+  <div class="preview-deltas">
+    <span class="dim">projected</span>
+    {% for name, vals in preview.items() %}
+    <span class="delta {{ 'up' if vals[2] >= 0 else 'down' }}">{{ name }} {{ "%+.0f" | format(vals[2]) }}</span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}

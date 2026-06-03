@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Odds · Eloify{% endblock %}
+{% block content %}
+<h1>Odds</h1>
+<form class="card odds-form" method="get" action="/odds">
+  <input type="hidden" name="model" value="{{ model_key }}">
+  <div class="row">
+    <input type="text" name="p1" list="players" value="{{ p1_in }}" placeholder="Player one" required>
+    <span class="dim">vs</span>
+    <input type="text" name="p2" list="players" value="{{ p2_in }}" placeholder="Player two" required>
+    <button type="submit">Odds</button>
+  </div>
+</form>
+<datalist id="players">
+  {% for n in names %}<option value="{{ n }}">{% endfor %}
+</datalist>
+
+{% if message %}<p class="empty">{{ message }}</p>{% endif %}
+
+{% if result %}
+{% set r = result %}
+<div class="versus">
+  {% if r.headshot1 %}<pre class="headshot">{{ r.headshot1 }}</pre>{% endif %}
+  <div class="versus-mid">
+    <div class="vs-name">{{ r.p1 }} <span class="dim">{{ r.r1 | elo }}</span></div>
+    <div class="dim">vs</div>
+    <div class="vs-name">{{ r.p2 }} <span class="dim">{{ r.r2 | elo }}</span></div>
+    <div class="vs-odds">
+      <div>{{ r.p1 }} <strong>{{ "%.0f" | format(r.p1_win * 100) }}%</strong></div>
+      <div>{{ r.p2 }} <strong>{{ "%.0f" | format(r.p2_win * 100) }}%</strong></div>
+    </div>
+    {% if r.odds_ratio %}<div class="dim">≈ {{ "%.1f" | format(r.odds_ratio) }} : 1 → {{ r.fav }}</div>{% endif %}
+    <div class="vs-score"><span class="dim">score</span> <strong>{{ r.fav_pts }}–{{ r.dog_pts }}</strong> <span class="dim">{{ r.fav }}</span></div>
+  </div>
+  {% if r.headshot2 %}<pre class="headshot">{{ r.headshot2 }}</pre>{% endif %}
+</div>
+
+<div class="cols trends">
+  {% for who, series, now in [(r.p1, r.trend1, r.r1), (r.p2, r.trend2, r.r2)] %}
+  {% set svg = sparkline_svg(series) %}
+  <figure class="chart grow">
+    <figcaption>📈 {{ who }} <span class="dim">now {{ now | elo }}</span></figcaption>
+    {% if svg %}{{ svg | safe }}{% else %}<p class="dim">not enough games</p>{% endif %}
+  </figure>
+  {% endfor %}
+</div>
+<p class="caption">model: {{ r.model.label }}</p>
+{% endif %}
+{% endblock %}

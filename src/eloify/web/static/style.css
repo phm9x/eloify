@@ -1,0 +1,161 @@
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --panel-2: #1e222b;
+  --ink: #e6e8ec;
+  --dim: #8b93a1;
+  --line: #2a2f3a;
+  --accent: #4ea1ff;
+  --green: #46c46a;
+  --red: #f0606a;
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 22px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.nav .brand { font-size: 18px; font-weight: 700; color: var(--ink); }
+.nav nav { display: flex; gap: 16px; flex-wrap: wrap; }
+.nav nav a { color: var(--dim); }
+.nav nav a:hover { color: var(--ink); text-decoration: none; }
+.nav nav a.cta { color: var(--accent); font-weight: 600; }
+.model-picker { margin-left: auto; color: var(--dim); font-size: 13px; }
+.model-picker select {
+  background: var(--panel-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 6px;
+  margin-left: 6px;
+}
+
+main { max-width: 980px; margin: 0 auto; padding: 26px 22px 60px; }
+
+h1 { font-size: 24px; margin: 0 0 18px; }
+h2 { font-size: 18px; margin: 0 0 10px; }
+h3 { font-size: 14px; color: var(--dim); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
+
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.page-head h1 { margin: 0; }
+
+.tabs, .h2h { display: flex; gap: 6px; align-items: center; }
+.tab { padding: 6px 12px; border-radius: 999px; background: var(--panel); color: var(--dim); }
+.tab.active { background: var(--accent); color: #06203f; font-weight: 600; }
+.tab:hover { text-decoration: none; }
+
+table.grid { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: var(--radius); overflow: hidden; }
+table.grid th, table.grid td { padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--line); }
+table.grid th { color: var(--dim); font-weight: 600; font-size: 13px; }
+table.grid tr:last-child td { border-bottom: none; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.dim { color: var(--dim); }
+.strong { font-weight: 700; }
+.res.win { color: var(--green); font-weight: 700; }
+.res.loss { color: var(--red); font-weight: 700; }
+td.win { color: var(--green); }
+
+.caption { color: var(--dim); font-size: 13px; margin-top: 12px; }
+.empty { color: var(--dim); padding: 24px 0; }
+.record { margin: 0 0 12px; }
+
+.player-list { list-style: none; padding: 0; margin: 0 0 22px; }
+.player-list li { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; margin: 18px 0; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+input[type=text], input[type=number] {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: 7px;
+  padding: 8px 10px;
+  font: inherit;
+}
+input:focus { outline: none; border-color: var(--accent); }
+
+button {
+  background: var(--panel-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 8px 16px;
+  font: inherit;
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button.cta { background: var(--accent); color: #06203f; border-color: var(--accent); font-weight: 600; }
+button.danger { color: var(--red); border-color: var(--red); }
+
+/* headshots: monospace, tight line-height so braille cells align */
+pre.headshot {
+  font-family: "SF Mono", "Menlo", "Consolas", monospace;
+  line-height: 1.0;
+  letter-spacing: 0;
+  font-size: 11px;
+  color: #c4cad4;
+  margin: 0;
+  white-space: pre;
+}
+pre.headshot.big { font-size: 15px; }
+
+.cols { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; }
+.grow { flex: 1; min-width: 260px; }
+
+figure.chart { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; flex: 1; min-width: 240px; }
+figure.chart figcaption { color: var(--ink); font-weight: 600; margin-bottom: 6px; }
+svg.spark { width: 100%; height: 150px; display: block; }
+.spark-line { fill: none; stroke: var(--accent); stroke-width: 2; }
+.spark-area { fill: rgba(78,161,255,.12); stroke: none; }
+.spark-dot { fill: var(--accent); }
+.spark-label { fill: var(--dim); font-size: 11px; }
+
+/* odds versus card */
+.versus { display: flex; gap: 30px; align-items: center; justify-content: center; flex-wrap: wrap; margin: 22px 0; }
+.versus-mid { text-align: center; }
+.vs-name { font-weight: 700; font-size: 18px; }
+.vs-odds { margin: 10px 0; }
+.vs-odds strong { font-size: 18px; }
+.trends { margin-top: 18px; }
+
+/* add-game form */
+.mode { border: none; padding: 0; display: flex; gap: 18px; margin-bottom: 16px; }
+.teams { display: flex; gap: 14px; align-items: flex-start; }
+.team { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.vs-sep { align-self: center; color: var(--dim); padding-top: 22px; }
+.score { max-width: 110px; }
+.hidden { display: none; }
+
+.errors { color: var(--red); background: rgba(240,96,106,.08); border: 1px solid rgba(240,96,106,.3); border-radius: 8px; padding: 10px 14px 10px 30px; margin: 14px 0; }
+
+.preview-box:empty { display: none; }
+.preview { margin: 14px 0; padding: 12px 14px; background: var(--panel-2); border-radius: 8px; }
+.preview-teams { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.preview-teams .win { color: var(--green); }
+.preview-deltas { margin-top: 10px; display: flex; gap: 14px; flex-wrap: wrap; }
+.delta.up { color: var(--green); }
+.delta.down { color: var(--red); }
+.new { color: #e7b84e; font-size: 12px; font-weight: 700; }
+
+.badge { background: var(--green); color: #042; border-radius: 5px; padding: 1px 6px; font-size: 11px; font-weight: 700; }
+
+.foot { max-width: 980px; margin: 0 auto; padding: 18px 22px 40px; color: var(--dim); font-size: 12px; display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line); }
+.foot code { background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }

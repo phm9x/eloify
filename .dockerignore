@@ -1,0 +1,11 @@
+.venv
+.git
+.gitignore
+headshots/
+**/__pycache__
+*.pyc
+tests
+*.egg-info
+.pytest_cache
+.env
+plan.md

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Log a game · Eloify{% endblock %}
+{% block content %}
+<h1>+ Log a game</h1>
+
+<form id="addform" class="card game-form" method="post" action="/games">
+  <input type="hidden" name="model" value="{{ model_key }}">
+
+  <fieldset class="mode">
+    <label><input type="radio" name="mode" value="1v1"
+      {% if form.mode != '2v2' %}checked{% endif %}> 1v1 singles</label>
+    <label><input type="radio" name="mode" value="2v2"
+      {% if form.mode == '2v2' %}checked{% endif %}> 2v2 doubles</label>
+  </fieldset>
+
+  <div class="teams">
+    <div class="team">
+      <h3>Team A</h3>
+      <input type="text" name="a1" list="players" value="{{ form.raw.a1 }}" placeholder="Player">
+      <input type="text" name="a2" list="players" value="{{ form.raw.a2 }}" placeholder="Player" class="doubles-only">
+      <input type="number" name="score_a" value="{{ form.raw.score_a }}" placeholder="Score" min="0" class="score">
+    </div>
+    <div class="vs-sep">vs</div>
+    <div class="team">
+      <h3>Team B</h3>
+      <input type="text" name="b1" list="players" value="{{ form.raw.b1 }}" placeholder="Player">
+      <input type="text" name="b2" list="players" value="{{ form.raw.b2 }}" placeholder="Player" class="doubles-only">
+      <input type="number" name="score_b" value="{{ form.raw.score_b }}" placeholder="Score" min="0" class="score">
+    </div>
+  </div>
+
+  <datalist id="players">
+    {% for n in names %}<option value="{{ n }}">{% endfor %}
+  </datalist>
+
+  {% if form.errors %}
+  <ul class="errors">{% for e in form.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  <div id="preview" class="preview-box"></div>
+
+  <button type="submit" class="cta">Log game</button>
+</form>
+
+<!-- Live projection: any edit re-posts the form to /games/preview. -->
+<div hx-post="/games/preview"
+     hx-trigger="change from:#addform, keyup changed delay:400ms from:#addform"
+     hx-include="#addform"
+     hx-target="#preview"
+     hx-swap="innerHTML"></div>
+
+<script>
+  // Show the second player slot only in doubles mode (minimal, no framework).
+  function syncMode() {
+    var doubles = document.querySelector('input[name=mode][value="2v2"]').checked;
+    document.querySelectorAll('.doubles-only').forEach(function (el) {
+      el.classList.toggle('hidden', !doubles);
+      el.disabled = !doubles;
+    });
+  }
+  document.querySelectorAll('input[name=mode]').forEach(function (r) {
+    r.addEventListener('change', syncMode);
+  });
+  syncMode();
+</script>
+{% endblock %}

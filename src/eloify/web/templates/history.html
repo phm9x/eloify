@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ player }} · Eloify{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>📜 {{ player }}{% if rival %} vs {{ rival }}{% endif %}</h1>
+  <form class="h2h" method="get" action="/history/{{ player }}">
+    <input type="hidden" name="model" value="{{ model_key }}">
+    <label>head-to-head
+      <input type="text" name="opponent" list="players" value="{{ rival or '' }}"
+             placeholder="opponent">
+    </label>
+    <button type="submit">Go</button>
+    {% if rival %}<a class="dim" href="/history/{{ player }}?model={{ model_key }}">clear</a>{% endif %}
+  </form>
+</div>
+<datalist id="players">
+  {% for n in names %}<option value="{{ n }}">{% endfor %}
+</datalist>
+
+{% if not rows %}
+  <p class="empty">
+    {% if rival %}{{ player }} hasn't faced {{ rival }} yet.{% else %}{{ player }} hasn't played any games yet.{% endif %}
+  </p>
+{% else %}
+<div class="cols">
+  {% if headshot %}<pre class="headshot">{{ headshot }}</pre>{% endif %}
+  <div class="grow">
+    <p class="record">
+      {% if rival %}{{ player }} {{ wins }}-{{ losses }} {{ rival }}{% else %}{{ wins }}-{{ losses }}{% endif %}
+      <span class="dim">· {{ rows | length }} games · {{ model.label }}</span>
+    </p>
+    <table class="grid">
+      <thead><tr><th>#</th><th>Result</th><th class="num">Score</th><th>Opponent</th><th class="num">ELO</th></tr></thead>
+      <tbody>
+        {% for r in rows[-15:] %}
+        <tr>
+          <td class="dim">{{ r.id }}</td>
+          <td class="res {{ 'win' if r.res == 'W' else 'loss' }}">{{ r.res }}</td>
+          <td class="num">{{ r.mine }}-{{ r.theirs }}</td>
+          <td>{{ r.opp }}</td>
+          <td class="num dim">{{ r.before | elo }}→{{ r.after | elo }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% set svg = sparkline_svg(trend) %}
+  {% if svg %}<figure class="chart"><figcaption>📈 rating</figcaption>{{ svg | safe }}</figure>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

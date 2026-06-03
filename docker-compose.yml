@@ -1,0 +1,19 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    # Credentials reuse config.py's existing support. Either:
+    #   1) mount your per-user config dir (it holds .env with the service-account
+    #      file path / spreadsheet id), and/or
+    #   2) pass them inline via environment / an env_file.
+    volumes:
+      - ${HOME}/.config/eloify:/root/.config/eloify:ro
+    environment:
+      # Inline JSON + spreadsheet id are honoured if set (override the mount):
+      - GOOGLE_SERVICE_ACCOUNT_JSON
+      - ELOIFY_SPREADSHEET_ID
+      - ELOIFY_MODEL
+    # env_file:
+    #   - .env
+    restart: unless-stopped
