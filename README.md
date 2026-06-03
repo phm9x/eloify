@@ -54,6 +54,23 @@ Only the **rendered braille** is committed (`src/eloify/assets/headshots/<userna
 needs the extra (`pip install 'eloify[headshots]'` for Pillow + OpenCV) and
 `chafa` (`brew install chafa`) for the rendering; displaying them needs neither.
 
+## Web interface
+
+Same board, same log-a-game flow, in the browser. It's a second presentation
+layer over the same core (and the same Google Sheet) — see **[SETUP.md](SETUP.md)**.
+
+```bash
+pip install -e ".[web]"
+GOOGLE_SERVICE_ACCOUNT_FILE=… elo-web        # → http://localhost:8000
+# or, with Docker / OrbStack:
+docker compose up --build                    # → http://localhost:8000 (and on the LAN)
+```
+
+Reads mirror the CLI (board, players, history, odds, last, models); writes are
+an HTMX log-a-game form with a live projected-delta preview, plus add-player and
+undo. Headshots are *shown* (the committed braille), but **set** only from the
+CLI (`elo set-headshot`), which needs Pillow/OpenCV/chafa.
+
 ## Scoring & rating
 
 - Games go to **11 or 21**, win by **2** (deuce caps at 17-15 / 27-25); other
