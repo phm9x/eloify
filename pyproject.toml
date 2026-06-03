@@ -19,16 +19,23 @@ dependencies = [
 [project.optional-dependencies]
 # Only needed to *add* headshots (face crop + render); display reads committed text.
 headshots = ["pillow>=10.0", "opencv-python-headless>=4.8"]
-dev = ["pytest>=8.0", "pillow>=10.0", "opencv-python-headless>=4.8"]
+# The browser interface (FastAPI + Jinja + HTMX). See src/eloify/web/.
+web = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "jinja2>=3.1", "python-multipart>=0.0.9"]
+dev = ["pytest>=8.0", "httpx>=0.27", "pillow>=10.0", "opencv-python-headless>=4.8"]
 
-# Both `elo` and `eloify` launch the same CLI.
+# Both `elo` and `eloify` launch the same CLI; `elo-web` launches the web UI.
 [project.scripts]
 elo = "eloify.cli:main"
 eloify = "eloify.cli:main"
+elo-web = "eloify.web.app:run"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/eloify"]
-artifacts = ["src/eloify/assets/headshots/*.txt"]
+artifacts = [
+    "src/eloify/assets/headshots/*.txt",
+    "src/eloify/web/templates/*",
+    "src/eloify/web/static/*",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
